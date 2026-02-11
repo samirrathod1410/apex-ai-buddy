@@ -57,6 +57,8 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        "chat-user": "hsl(var(--chat-user))",
+        "chat-assistant": "hsl(var(--chat-assistant))",
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -87,5 +89,5 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
 } satisfies Config;
