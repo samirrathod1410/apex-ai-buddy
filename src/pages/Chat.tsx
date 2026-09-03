@@ -10,7 +10,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Menu, Bot, Sparkles } from "lucide-react";
+import { Menu, Bot, Plus, ArrowDown } from "lucide-react";
 import { Navigate } from "react-router-dom";
 
 type Msg = { role: "user" | "assistant"; content: string };
