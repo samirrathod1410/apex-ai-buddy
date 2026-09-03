@@ -53,10 +53,25 @@ export default function Chat() {
     })();
   }, [activeId]);
 
-  // Auto-scroll
+  // Auto-scroll only when user is near the bottom
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [atBottom, setAtBottom] = useState(true);
+
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
+    const el = scrollContainerRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior });
+  }, []);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 120);
+  }, []);
+
   useEffect(() => {
-    scrollRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    if (atBottom) scrollToBottom(messages.length <= 1 ? "auto" : "smooth");
+  }, [messages, atBottom, scrollToBottom]);
+
 
   const createConversation = async () => {
     if (!user) return null;
