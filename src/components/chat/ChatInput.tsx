@@ -79,35 +79,37 @@ export function ChatInput({ onSend, disabled, onStopStreaming, isStreaming }: Ch
   );
 
   return (
-    <div className="border-t border-border bg-background p-4">
+    <div className="shrink-0 border-t border-border bg-background/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur sm:px-4">
       <div className="mx-auto max-w-3xl">
-        <div className="flex items-end gap-2 rounded-2xl border border-border bg-card p-2 shadow-sm focus-within:ring-2 focus-within:ring-ring/20 transition-shadow">
+        <div className="flex items-end gap-1 rounded-3xl border border-border bg-card px-2 py-1.5 transition-colors focus-within:border-primary/40">
           <textarea
             ref={textareaRef}
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Type a message..."
+            placeholder={isStreaming ? "Generating response…" : "Message Nova AI…"}
             rows={1}
             disabled={disabled}
-            className="flex-1 resize-none bg-transparent px-2 py-2 text-sm outline-none placeholder:text-muted-foreground disabled:opacity-50"
+            className="max-h-40 flex-1 resize-none bg-transparent px-2 py-2 text-[15px] leading-6 outline-none placeholder:text-muted-foreground disabled:opacity-50"
           />
-          <div className="flex gap-1">
+          <div className="flex items-center gap-1 pb-0.5">
             {hasSpeech && (
               <Button
                 variant="ghost"
                 size="icon"
-                className={cn("h-9 w-9 shrink-0", isRecording && "text-destructive animate-pulse")}
+                aria-label={isRecording ? "Stop recording" : "Start voice input"}
+                className={cn("h-9 w-9 shrink-0 rounded-full", isRecording && "text-destructive animate-pulse")}
                 onClick={toggleVoice}
               >
-                {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                {isRecording ? <MicOff className="h-[18px] w-[18px]" /> : <Mic className="h-[18px] w-[18px]" />}
               </Button>
             )}
             {isStreaming ? (
               <Button
-                variant="ghost"
+                variant="secondary"
                 size="icon"
-                className="h-9 w-9 shrink-0"
+                aria-label="Stop generating"
+                className="h-9 w-9 shrink-0 rounded-full"
                 onClick={onStopStreaming}
               >
                 <Square className="h-4 w-4" />
@@ -115,7 +117,8 @@ export function ChatInput({ onSend, disabled, onStopStreaming, isStreaming }: Ch
             ) : (
               <Button
                 size="icon"
-                className="h-9 w-9 shrink-0"
+                aria-label="Send message"
+                className="h-9 w-9 shrink-0 rounded-full"
                 onClick={handleSend}
                 disabled={!input.trim() || disabled}
               >
@@ -124,7 +127,7 @@ export function ChatInput({ onSend, disabled, onStopStreaming, isStreaming }: Ch
             )}
           </div>
         </div>
-        <p className="mt-2 text-center text-xs text-muted-foreground">
+        <p className="mt-2 text-center text-[11px] text-muted-foreground">
           Nova AI can make mistakes. Verify important information.
         </p>
       </div>
