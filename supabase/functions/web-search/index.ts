@@ -47,7 +47,7 @@ serve(async (req) => {
           query,
           max_results: 5,
           search_depth: "basic",
-઼        }),
+}),
       });
       if (!r.ok) throw new Error(`Search provider error (${r.status})`);
       const j = await r.json();
