@@ -186,7 +186,7 @@ export default function Chat() {
 
     try {
       await streamChat({
-        messages: [...messages, { role: "user", content: prompt }].slice(-15),
+        messages: [...messages, { role: "user" as const, content: prompt }].slice(-15),
         onDelta: upsertAssistant,
         onDone: async () => {
           setIsStreaming(false);
