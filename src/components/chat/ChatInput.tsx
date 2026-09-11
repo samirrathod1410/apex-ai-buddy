@@ -148,12 +148,20 @@ export function ChatInput({
         </div>
 
         {/* Attachments */}
-        {attachments.length > 0 && (
+        {(attachments.length > 0 || reading) && (
           <div className="mb-2 flex flex-wrap gap-2">
             {attachments.map((a, i) => (
-              <span key={i} className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1 text-xs">
-                <Paperclip className="h-3 w-3 opacity-60" />
-                <span className="max-w-[160px] truncate">{a.name}</span>
+              <span key={i} className="inline-flex max-w-full items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs">
+                {a.kind === "image"
+                  ? <ImageIcon className="h-3.5 w-3.5 shrink-0 text-primary" />
+                  : <FileText className="h-3.5 w-3.5 shrink-0 text-primary" />}
+                <span className="min-w-0">
+                  <span className="block max-w-[150px] truncate font-medium">{a.name}</span>
+                  <span className="block text-[10px] uppercase text-muted-foreground">
+                    {(a.name.split(".").pop() || "file")} · {fileLabel(a.size)}
+                    {a.truncated ? " · shortened" : ""}
+                  </span>
+                </span>
                 <button
                   aria-label={`Remove ${a.name}`}
                   onClick={() => setAttachments(prev => prev.filter((_, j) => j !== i))}
@@ -163,6 +171,11 @@ export function ChatInput({
                 </button>
               </span>
             ))}
+            {reading && (
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Reading file…
+              </span>
+            )}
           </div>
         )}
         {attachError && <p className="mb-2 text-xs text-destructive">{attachError}</p>}
@@ -172,6 +185,7 @@ export function ChatInput({
             ref={fileRef}
             type="file"
             multiple
+            accept={ACCEPT_ATTR}
             className="hidden"
             onChange={e => handleFiles(e.target.files)}
           />
@@ -216,7 +230,7 @@ export function ChatInput({
                 size="icon" aria-label="Send message"
                 className="h-9 w-9 shrink-0 rounded-full"
                 onClick={handleSend}
-                disabled={!input.trim() || disabled}
+                disabled={(!input.trim() && attachments.length === 0) || disabled || reading}
               >
                 <Send className="h-4 w-4" />
               </Button>
