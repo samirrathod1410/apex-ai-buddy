@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ChatSidebar, Conversation, NovaView } from "@/components/chat/ChatSidebar";
 import { ChatMessage } from "@/components/chat/ChatMessage";
 import { ChatInput, SendMode } from "@/components/chat/ChatInput";
+import type { ExtractedFile } from "@/lib/fileExtract";
 import { TemplatesPanel } from "@/components/chat/TemplatesPanel";
 import { ExplorePanel } from "@/components/chat/ExplorePanel";
 import { WalletPanel } from "@/components/chat/WalletPanel";
