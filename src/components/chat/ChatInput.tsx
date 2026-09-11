@@ -1,17 +1,14 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Mic, MicOff, Square, Paperclip, X, ImagePlus, Globe } from "lucide-react";
+import { Send, Mic, MicOff, Square, Paperclip, X, ImagePlus, Globe, FileText, Image as ImageIcon, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { extractFile, fileLabel, ACCEPT_ATTR, type ExtractedFile } from "@/lib/fileExtract";
 
 export type SendMode = "chat" | "image" | "search";
-
-interface Attachment {
-  name: string;
-  content: string;
-}
+export type { ExtractedFile };
 
 interface ChatInputProps {
-  onSend: (message: string, mode: SendMode) => void;
+  onSend: (message: string, mode: SendMode, files?: ExtractedFile[]) => void;
   disabled?: boolean;
   onStopStreaming?: () => void;
   isStreaming?: boolean;
@@ -19,15 +16,14 @@ interface ChatInputProps {
   onDraftUsed?: () => void;
 }
 
-const TEXTY = /\.(txt|md|markdown|csv|json|ya?ml|log|html?|css|jsx?|tsx?|py|java|rb|go|rs|php|c|cpp|h|sql|sh)$/i;
-
 export function ChatInput({
   onSend, disabled, onStopStreaming, isStreaming, draft, onDraftUsed,
 }: ChatInputProps) {
   const [input, setInput] = useState("");
   const [mode, setMode] = useState<SendMode>("chat");
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [attachments, setAttachments] = useState<ExtractedFile[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
+  const [reading, setReading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -51,15 +47,11 @@ export function ChatInput({
 
   const handleSend = () => {
     const text = input.trim();
-    if (!text || disabled) return;
-    const withFiles = attachments.length
-      ? `${text}\n\n${attachments
-          .map(a => `--- Attached file: ${a.name} ---\n${a.content}`)
-          .join("\n\n")}`
-      : text;
-    onSend(withFiles, mode);
+    if ((!text && !attachments.length) || disabled) return;
+    onSend(text, mode, attachments);
     setInput("");
     setAttachments([]);
+    setAttachError(null);
     setMode("chat");
     if (textareaRef.current) textareaRef.current.style.height = "auto";
   };
@@ -74,19 +66,19 @@ export function ChatInput({
   const handleFiles = async (files: FileList | null) => {
     if (!files?.length) return;
     setAttachError(null);
-    const next: Attachment[] = [];
+    setReading(true);
+    const next: ExtractedFile[] = [];
+    const errors: string[] = [];
     for (const file of Array.from(files)) {
-      if (!TEXTY.test(file.name)) {
-        setAttachError(`${file.name}: only text-based files are supported right now.`);
-        continue;
+      try {
+        next.push(await extractFile(file));
+      } catch (e: any) {
+        errors.push(e?.message || `Could not read ${file.name}.`);
       }
-      if (file.size > 200_000) {
-        setAttachError(`${file.name} is too large (max 200 KB).`);
-        continue;
-      }
-      next.push({ name: file.name, content: (await file.text()).slice(0, 100_000) });
     }
     if (next.length) setAttachments(prev => [...prev, ...next]);
+    if (errors.length) setAttachError(errors.join(" "));
+    setReading(false);
     if (fileRef.current) fileRef.current.value = "";
   };
 
@@ -156,12 +148,20 @@ export function ChatInput({
         </div>
 
         {/* Attachments */}
-        {attachments.length > 0 && (
+        {(attachments.length > 0 || reading) && (
           <div className="mb-2 flex flex-wrap gap-2">
             {attachments.map((a, i) => (
-              <span key={i} className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1 text-xs">
-                <Paperclip className="h-3 w-3 opacity-60" />
-                <span className="max-w-[160px] truncate">{a.name}</span>
+              <span key={i} className="inline-flex max-w-full items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs">
+                {a.kind === "image"
+                  ? <ImageIcon className="h-3.5 w-3.5 shrink-0 text-primary" />
+                  : <FileText className="h-3.5 w-3.5 shrink-0 text-primary" />}
+                <span className="min-w-0">
+                  <span className="block max-w-[150px] truncate font-medium">{a.name}</span>
+                  <span className="block text-[10px] uppercase text-muted-foreground">
+                    {(a.name.split(".").pop() || "file")} · {fileLabel(a.size)}
+                    {a.truncated ? " · shortened" : ""}
+                  </span>
+                </span>
                 <button
                   aria-label={`Remove ${a.name}`}
                   onClick={() => setAttachments(prev => prev.filter((_, j) => j !== i))}
@@ -171,6 +171,11 @@ export function ChatInput({
                 </button>
               </span>
             ))}
+            {reading && (
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Reading file…
+              </span>
+            )}
           </div>
         )}
         {attachError && <p className="mb-2 text-xs text-destructive">{attachError}</p>}
@@ -180,6 +185,7 @@ export function ChatInput({
             ref={fileRef}
             type="file"
             multiple
+            accept={ACCEPT_ATTR}
             className="hidden"
             onChange={e => handleFiles(e.target.files)}
           />
@@ -224,7 +230,7 @@ export function ChatInput({
                 size="icon" aria-label="Send message"
                 className="h-9 w-9 shrink-0 rounded-full"
                 onClick={handleSend}
-                disabled={!input.trim() || disabled}
+                disabled={(!input.trim() && attachments.length === 0) || disabled || reading}
               >
                 <Send className="h-4 w-4" />
               </Button>

@@ -1,4 +1,8 @@
-type Msg = { role: "user" | "assistant"; content: string };
+type ContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
+
+type Msg = { role: "user" | "assistant"; content: string | ContentPart[] };
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
@@ -33,7 +37,14 @@ export async function streamChat({
   if (resp.status === 402) {
     throw new Error("Usage credits depleted. Please add credits to continue.");
   }
-  if (!resp.ok || !resp.body) throw new Error("Failed to start stream");
+  if (!resp.ok || !resp.body) {
+    let detail = "";
+    try {
+      const j = await resp.json();
+      detail = j?.error || "";
+    } catch { /* ignore */ }
+    throw new Error(detail || `The AI provider returned an error (${resp.status}).`);
+  }
 
   const reader = resp.body.getReader();
   const decoder = new TextDecoder();

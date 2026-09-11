@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ChatSidebar, Conversation, NovaView } from "@/components/chat/ChatSidebar";
 import { ChatMessage } from "@/components/chat/ChatMessage";
 import { ChatInput, SendMode } from "@/components/chat/ChatInput";
+import type { ExtractedFile } from "@/lib/fileExtract";
 import { TemplatesPanel } from "@/components/chat/TemplatesPanel";
 import { ExplorePanel } from "@/components/chat/ExplorePanel";
 import { WalletPanel } from "@/components/chat/WalletPanel";
@@ -114,7 +115,7 @@ export default function Chat() {
     loadConversations();
   };
 
-  const handleSend = async (input: string, mode: SendMode = "chat") => {
+  const handleSend = async (rawInput: string, mode: SendMode = "chat", files: ExtractedFile[] = []) => {
     if (!user) return;
     setView("home");
 
@@ -124,10 +125,25 @@ export default function Chat() {
       if (!convId) return;
     }
 
+    const textFiles = files.filter(f => f.kind === "text");
+    const imageFiles = files.filter(f => f.kind === "image");
+
+    const input =
+      rawInput ||
+      (files.length
+        ? `Analyze the attached file${files.length > 1 ? "s" : ""}.`
+        : "");
+    if (!input) return;
+
+    const attachmentNote = files.length
+      ? "\n\n" + files.map(f => `📎 ${f.name}`).join("\n")
+      : "";
+
     const wasEmpty = messages.length === 0;
-    const userMsg: Msg = { role: "user", content: input };
+    const displayText = input + attachmentNote;
+    const userMsg: Msg = { role: "user", content: displayText };
     setMessages(prev => [...prev, userMsg]);
-    await persist(convId, "user", input);
+    await persist(convId, "user", displayText);
 
     if (mode === "image") {
       setIsStreaming(true);
