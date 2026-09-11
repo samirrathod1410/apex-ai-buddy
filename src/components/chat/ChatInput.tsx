@@ -66,19 +66,19 @@ export function ChatInput({
   const handleFiles = async (files: FileList | null) => {
     if (!files?.length) return;
     setAttachError(null);
-    const next: Attachment[] = [];
+    setReading(true);
+    const next: ExtractedFile[] = [];
+    const errors: string[] = [];
     for (const file of Array.from(files)) {
-      if (!TEXTY.test(file.name)) {
-        setAttachError(`${file.name}: only text-based files are supported right now.`);
-        continue;
+      try {
+        next.push(await extractFile(file));
+      } catch (e: any) {
+        errors.push(e?.message || `Could not read ${file.name}.`);
       }
-      if (file.size > 200_000) {
-        setAttachError(`${file.name} is too large (max 200 KB).`);
-        continue;
-      }
-      next.push({ name: file.name, content: (await file.text()).slice(0, 100_000) });
     }
     if (next.length) setAttachments(prev => [...prev, ...next]);
+    if (errors.length) setAttachError(errors.join(" "));
+    setReading(false);
     if (fileRef.current) fileRef.current.value = "";
   };
 
