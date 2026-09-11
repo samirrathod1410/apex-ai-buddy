@@ -1,17 +1,14 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Mic, MicOff, Square, Paperclip, X, ImagePlus, Globe } from "lucide-react";
+import { Send, Mic, MicOff, Square, Paperclip, X, ImagePlus, Globe, FileText, Image as ImageIcon, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { extractFile, fileLabel, ACCEPT_ATTR, type ExtractedFile } from "@/lib/fileExtract";
 
 export type SendMode = "chat" | "image" | "search";
-
-interface Attachment {
-  name: string;
-  content: string;
-}
+export type { ExtractedFile };
 
 interface ChatInputProps {
-  onSend: (message: string, mode: SendMode) => void;
+  onSend: (message: string, mode: SendMode, files?: ExtractedFile[]) => void;
   disabled?: boolean;
   onStopStreaming?: () => void;
   isStreaming?: boolean;
@@ -19,15 +16,14 @@ interface ChatInputProps {
   onDraftUsed?: () => void;
 }
 
-const TEXTY = /\.(txt|md|markdown|csv|json|ya?ml|log|html?|css|jsx?|tsx?|py|java|rb|go|rs|php|c|cpp|h|sql|sh)$/i;
-
 export function ChatInput({
   onSend, disabled, onStopStreaming, isStreaming, draft, onDraftUsed,
 }: ChatInputProps) {
   const [input, setInput] = useState("");
   const [mode, setMode] = useState<SendMode>("chat");
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [attachments, setAttachments] = useState<ExtractedFile[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
+  const [reading, setReading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -51,15 +47,11 @@ export function ChatInput({
 
   const handleSend = () => {
     const text = input.trim();
-    if (!text || disabled) return;
-    const withFiles = attachments.length
-      ? `${text}\n\n${attachments
-          .map(a => `--- Attached file: ${a.name} ---\n${a.content}`)
-          .join("\n\n")}`
-      : text;
-    onSend(withFiles, mode);
+    if ((!text && !attachments.length) || disabled) return;
+    onSend(text, mode, attachments);
     setInput("");
     setAttachments([]);
+    setAttachError(null);
     setMode("chat");
     if (textareaRef.current) textareaRef.current.style.height = "auto";
   };
