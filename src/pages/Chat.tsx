@@ -162,7 +162,15 @@ export default function Chat() {
       return;
     }
 
-    let prompt = input;
+    const fileContext = textFiles.length
+      ? textFiles
+          .map(f => `--- File: ${f.name} (${f.size} bytes)${f.truncated ? " — shortened" : ""} ---\n${f.text ?? ""}`)
+          .join("\n\n")
+      : "";
+
+    let prompt = fileContext
+      ? `${input}\n\nThe user attached the following file content. Use it to answer:\n\n${fileContext}`
+      : input;
     let sources = "";
     if (mode === "search") {
       setIsStreaming(true);
