@@ -37,6 +37,7 @@ export default function Chat() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [pendingMode, setPendingMode] = useState<SendMode>("chat");
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -146,21 +147,27 @@ export default function Chat() {
     await persist(convId, "user", displayText);
 
     if (mode === "image") {
+      setPendingMode("image");
       setIsStreaming(true);
       try {
         const { data, error } = await supabase.functions.invoke("generate-image", { body: { prompt: input } });
-        if (error) throw error;
+        if (error) throw new Error(error.message || "Image generation failed");
         if (data?.error) throw new Error(data.error);
+        if (!data?.image) throw new Error("No image was returned. Please try again.");
         const content = `![${input.replace(/[[\]]/g, "")}](${data.image})`;
         setMessages(prev => [...prev, { role: "assistant", content }]);
         await persist(convId, "assistant", content);
         await finishConversation(convId, input, wasEmpty);
       } catch (e: any) {
-        toast({ title: "Image generation failed", description: e.message, variant: "destructive" });
+        const msg = e.message || "Image generation failed. Please try again.";
+        setMessages(prev => [...prev, { role: "assistant", content: `⚠️ ${msg}` }]);
+        toast({ title: "Image generation failed", description: msg, variant: "destructive" });
       }
       setIsStreaming(false);
+      setPendingMode("chat");
       return;
     }
+    setPendingMode("chat");
 
     const fileContext = textFiles.length
       ? textFiles
@@ -412,7 +419,7 @@ export default function Chat() {
                         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border bg-secondary">
                           <span className="block h-2.5 w-2.5 animate-pulse rounded-full bg-primary" />
                         </span>
-                        <span className="animate-pulse">Thinking…</span>
+                        <span className="animate-pulse">{pendingMode === "image" ? "Creating your image… this can take up to a minute" : "Thinking…"}</span>
                       </div>
                     )}
                     <div ref={scrollRef} />
