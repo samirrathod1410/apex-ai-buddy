@@ -210,7 +210,21 @@ export default function Chat() {
 
     try {
       await streamChat({
-        messages: [...messages, { role: "user" as const, content: prompt }].slice(-15),
+        messages: [
+          ...messages,
+          {
+            role: "user" as const,
+            content: imageFiles.length
+              ? ([
+                  { type: "text" as const, text: prompt },
+                  ...imageFiles.map(f => ({
+                    type: "image_url" as const,
+                    image_url: { url: f.dataUrl! },
+                  })),
+                ])
+              : prompt,
+          },
+        ].slice(-15),
         onDelta: upsertAssistant,
         onDone: async () => {
           setIsStreaming(false);
