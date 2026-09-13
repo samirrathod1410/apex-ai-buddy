@@ -25,18 +25,43 @@ serve(async (req) => {
     const TAVILY = Deno.env.get("TAVILY_API_KEY");
     const BRAVE = Deno.env.get("BRAVE_SEARCH_API_KEY");
 
-    if (!TAVILY && !BRAVE) {
-      return new Response(
-        JSON.stringify({
-          error: "not_configured",
-          message:
-            "Web search is not configured yet. Add a TAVILY_API_KEY or BRAVE_SEARCH_API_KEY secret to enable it.",
-        }),
-        { status: 501, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
     let results: { title: string; url: string; snippet: string }[] = [];
+
+    const strip = (s: string) =>
+      s.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&quot;/g, '"')
+        .replace(/&#x27;|&apos;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").trim();
+
+    // Real, keyless fallback: DuckDuckGo HTML endpoint. Used only when no
+    // TAVILY_API_KEY or BRAVE_SEARCH_API_KEY is configured.
+    const duckDuckGo = async (): Promise<{ title: string; url: string; snippet: string }[]> => {
+      const r = await fetch("https://html.duckduckgo.com/html/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "User-Agent": "Mozilla/5.0 (compatible; NovaAI/1.0)",
+        },
+        body: `q=${encodeURIComponent(query)}`,
+      });
+      if (!r.ok) throw new Error(`Search provider error (${r.status})`);
+      const html = await r.text();
+      const out: { title: string; url: string; snippet: string }[] = [];
+      const blocks = html.split('class="result results_links');
+      for (let i = 1; i < blocks.length && out.length < 5; i++) {
+        const b = blocks[i];
+        const link = b.match(/class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/);
+        if (!link) continue;
+        let url = link[1];
+        const uddg = url.match(/uddg=([^&]+)/);
+        if (uddg) url = decodeURIComponent(uddg[1]);
+        const snip = b.match(/class="result__snippet"[^>]*>([\s\S]*?)<\/a>/);
+        out.push({
+          title: strip(link[2]),
+          url,
+          snippet: snip ? strip(snip[1]) : "",
+        });
+      }
+      return out;
+    };
 
     if (TAVILY) {
       const r = await fetch("https://api.tavily.com/search", {
