@@ -1,6 +1,6 @@
 import { Copy, Check } from "lucide-react";
 import { useState } from "react";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
@@ -67,6 +67,7 @@ export function ChatMessage({ role, content, isStreaming }: ChatMessageProps) {
         >
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
+            urlTransform={(url) => (url.startsWith("data:image/") ? url : defaultUrlTransform(url))}
             components={{
               table: ({ node, ...props }) => (
                 <div className="my-3 w-full overflow-x-auto rounded-lg border border-border">
