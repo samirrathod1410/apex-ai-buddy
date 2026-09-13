@@ -162,7 +162,15 @@ export default function Chat() {
       return;
     }
 
-    let prompt = input;
+    const fileContext = textFiles.length
+      ? textFiles
+          .map(f => `--- File: ${f.name} (${f.size} bytes)${f.truncated ? " — shortened" : ""} ---\n${f.text ?? ""}`)
+          .join("\n\n")
+      : "";
+
+    let prompt = fileContext
+      ? `${input}\n\nThe user attached the following file content. Use it to answer:\n\n${fileContext}`
+      : input;
     let sources = "";
     if (mode === "search") {
       setIsStreaming(true);
@@ -202,7 +210,21 @@ export default function Chat() {
 
     try {
       await streamChat({
-        messages: [...messages, { role: "user" as const, content: prompt }].slice(-15),
+        messages: [
+          ...messages,
+          {
+            role: "user" as const,
+            content: imageFiles.length
+              ? ([
+                  { type: "text" as const, text: prompt },
+                  ...imageFiles.map(f => ({
+                    type: "image_url" as const,
+                    image_url: { url: f.dataUrl! },
+                  })),
+                ])
+              : prompt,
+          },
+        ].slice(-15),
         onDelta: upsertAssistant,
         onDone: async () => {
           setIsStreaming(false);
